@@ -2,7 +2,8 @@
 const nextConfig = {
   /* config options here */
   reactCompiler: true,
-  output: "standalone",
+  // Remove standalone for Vercel - it handles this automatically
+  // output: "standalone",
 };
 
 export default nextConfig;
