@@ -336,12 +336,14 @@ export default function DashboardClient() {
     fetcher,
     { 
       revalidateOnFocus: true,
-      dedupingInterval: 5000,
+      revalidateOnReconnect: true,
+      dedupingInterval: 2000,
+      refreshInterval: 0,
       keepPreviousData: true,
     }
   );
 
-  // SWR for analytics - longer cache since it changes less frequently
+  // SWR for analytics - revalidate after mutations
   const { 
     data: analytics, 
     error: analyticsError,
@@ -351,8 +353,10 @@ export default function DashboardClient() {
     '/api/analytics?days=365',
     fetcher,
     { 
-      revalidateOnFocus: false,
-      dedupingInterval: 30000,
+      revalidateOnFocus: true,
+      revalidateOnReconnect: true,
+      dedupingInterval: 5000,
+      refreshInterval: 0,
       keepPreviousData: true,
     }
   );
@@ -361,10 +365,13 @@ export default function DashboardClient() {
   const loading = habitsLoading || analyticsLoading;
   const fetchError = habitsError?.message || analyticsError?.message || error;
 
-  // Refresh all data
+  // Refresh all data - force revalidation from server
   const refreshAll = useCallback(async () => {
     setError("");
-    await Promise.all([mutateHabits(), mutateAnalytics()]);
+    await Promise.all([
+      mutateHabits(undefined, { revalidate: true }),
+      mutateAnalytics(undefined, { revalidate: true })
+    ]);
   }, [mutateHabits, mutateAnalytics]);
 
   // Optimistic update for status changes
@@ -380,16 +387,19 @@ export default function DashboardClient() {
           h.id === habitId ? { ...h, status: nextStatus } : h
         ) || [],
       }),
-      false
+      { revalidate: false }
     );
 
     try {
       await postJson("/api/entries", { habitId, date, status: nextStatus });
-      // Revalidate both after success
-      await Promise.all([mutateHabits(), mutateAnalytics()]);
+      // Force revalidate both after success
+      await Promise.all([
+        mutateHabits(undefined, { revalidate: true }),
+        mutateAnalytics(undefined, { revalidate: true })
+      ]);
     } catch (e) {
-      // Revert on error
-      await mutateHabits();
+      // Revert on error - force fetch fresh data
+      await mutateHabits(undefined, { revalidate: true });
       setError(e?.message || "Failed to update status");
     } finally {
       setSaving(false);
