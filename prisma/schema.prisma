@@ -1,0 +1,107 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum HabitFrequency {
+  DAILY
+  WEEKLY
+}
+
+enum HabitEntryStatus {
+  COMPLETED
+  PARTIAL
+  MISSED
+}
+
+model User {
+  id        String   @id @default(cuid())
+  name      String?
+  email     String?  @unique
+  emailVerified DateTime?
+  image     String?
+  createdAt DateTime @default(now())
+
+  accounts Account[]
+  sessions Session[]
+  habits   Habit[]
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model Habit {
+  id          String         @id @default(cuid())
+  userId      String
+  title       String
+  description String?
+  frequency   HabitFrequency @default(DAILY)
+  color       String         @default("primary")
+  createdAt   DateTime       @default(now())
+
+  user    User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  entries HabitEntry[]
+  streak  Streak?
+
+  @@index([userId])
+}
+
+model HabitEntry {
+  id        String          @id @default(cuid())
+  habitId   String
+  date      DateTime        @db.Date
+  status    HabitEntryStatus
+  createdAt DateTime        @default(now())
+
+  habit Habit @relation(fields: [habitId], references: [id], onDelete: Cascade)
+
+  @@unique([habitId, date])
+  @@index([habitId, date])
+}
+
+model Streak {
+  id            String   @id @default(cuid())
+  habitId       String   @unique
+  currentStreak Int      @default(0)
+  longestStreak Int      @default(0)
+  updatedAt     DateTime @updatedAt
+
+  habit Habit @relation(fields: [habitId], references: [id], onDelete: Cascade)
+}
