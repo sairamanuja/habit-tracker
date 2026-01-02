@@ -1,36 +1,110 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+# Arin — Habit Tracker
 
-## Getting Started
+Modern, data-driven habit tracker inspired by GitHub contributions and clean Notion-style UI.
 
-First, run the development server:
+## Tech stack
+
+- Next.js (App Router) + JavaScript
+- Tailwind CSS + shadcn/ui
+- Auth: NextAuth (Google OAuth)
+- DB: PostgreSQL + Prisma
+- Charts: Recharts
+
+## Features
+
+- Auth-protected dashboard
+- Create habits (daily/weekly)
+- Daily status cycle: `COMPLETED → PARTIAL → MISSED`
+- GitHub-style 365-day heatmap (intensity by completion %)
+- Basic analytics: per-habit completion %, streaks, 30-day trend
+- Server-side Zod validation + user-scoped queries
+- Lightweight API rate limiting
+
+## Screenshots
+
+Add screenshots here after you run locally.
+
+## Local setup
+
+1) Install dependencies
+
+```bash
+npm install
+```
+
+2) Create env file
+
+```bash
+cp .env.example .env
+```
+
+3) Start Postgres (optional)
+
+If you use Docker:
+
+```bash
+docker compose up -d db
+```
+
+If Docker says “permission denied”, add your user to the docker group (Linux) and re-login:
+
+```bash
+sudo usermod -aG docker $USER
+```
+
+4) Run migrations
+
+```bash
+npm run prisma:migrate
+```
+
+5) Start the app
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open http://localhost:3000
 
-You can start editing the page by modifying `app/page.js`. The page auto-updates as you edit the file.
+## Auth configuration
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### Google OAuth
 
-## Learn More
+Set these in `.env`:
 
-To learn more about Next.js, take a look at the following resources:
+- `GOOGLE_CLIENT_ID`
+- `GOOGLE_CLIENT_SECRET`
+- `NEXTAUTH_SECRET`
+- `NEXTAUTH_URL`
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Deployment (Vercel + Neon/Supabase)
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+1) Create a Postgres DB (Neon/Supabase) and set `DATABASE_URL`.
+2) In Vercel project settings, set:
 
-## Deploy on Vercel
+- `DATABASE_URL`
+- `NEXTAUTH_URL` (your production URL)
+- `NEXTAUTH_SECRET`
+- `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+3) Deploy.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Run migrations in production using `prisma migrate deploy` (from CI/CD or locally with the same `DATABASE_URL`).
+
+## Docker (production)
+
+Build and run:
+
+```bash
+docker build -t arin .
+docker run -p 3000:3000 --env-file .env arin
+```
+
+## Roadmap
+
+- More granular weekly habits logic
+- Editing/deleting habits in UI
+- Export CSV/PDF
+- Reflection journaling
+- AI habit suggestions
+# habit-tracker
