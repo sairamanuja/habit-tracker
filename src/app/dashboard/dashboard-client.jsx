@@ -613,7 +613,10 @@ export default function DashboardClient() {
               </CardTitle>
               <CardDescription>Click the icon to cycle status</CardDescription>
             </div>
-            <HabitFormDialog onCreated={() => refreshAll()} />
+            <HabitFormDialog 
+              onCreated={() => refreshAll()} 
+              trigger={<Button size="sm" className="gap-1"><Target className="h-4 w-4" /> Add Habit</Button>}
+            />
           </CardHeader>
           <CardContent className="space-y-3">
             {loading ? (
