@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -25,45 +25,77 @@ const schema = z.object({
   color: z.enum(["primary", "secondary", "accent", "muted"]).default("primary"),
 });
 
-export default function HabitFormDialog({ onCreated }) {
-  const [open, setOpen] = useState(false);
+export default function HabitFormDialog({
+  mode = "create",
+  habit = null,
+  trigger = null,
+  open: controlledOpen,
+  onOpenChange: controlledOnOpenChange,
+  onCreated,
+  onSaved,
+}) {
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
+  const open = controlledOpen ?? uncontrolledOpen;
+  const setOpen = controlledOnOpenChange ?? setUncontrolledOpen;
+
+  const isEdit = mode === "edit";
+
+  const defaults = useMemo(
+    () => ({
+      title: habit?.title || "",
+      description: habit?.description || "",
+      frequency: habit?.frequency || "DAILY",
+      color: habit?.color || "primary",
+    }),
+    [habit]
+  );
 
   const form = useForm({
     resolver: zodResolver(schema),
-    defaultValues: {
-      title: "",
-      description: "",
-      frequency: "DAILY",
-      color: "primary",
-    },
+    defaultValues: defaults,
   });
 
+  useEffect(() => {
+    if (!open) return;
+    form.reset(defaults);
+  }, [open, defaults, form]);
+
   async function onSubmit(values) {
-    const res = await fetch("/api/habits", {
-      method: "POST",
+    const url = isEdit ? `/api/habits/${habit?.id}` : "/api/habits";
+    const method = isEdit ? "PATCH" : "POST";
+
+    const res = await fetch(url, {
+      method,
       headers: { "content-type": "application/json" },
       body: JSON.stringify(values),
     });
 
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
-      throw new Error(data?.error || "Failed to create habit");
+      throw new Error(data?.error || (isEdit ? "Failed to update habit" : "Failed to create habit"));
     }
 
     form.reset();
     setOpen(false);
-    onCreated?.();
+    if (isEdit) onSaved?.();
+    else onCreated?.();
   }
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button>Create habit</Button>
-      </DialogTrigger>
+      {trigger !== null ? (
+        <DialogTrigger asChild>
+          {trigger ? (
+            trigger
+          ) : (
+            <Button>{isEdit ? "Edit" : "Create habit"}</Button>
+          )}
+        </DialogTrigger>
+      ) : null}
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Create habit</DialogTitle>
-          <DialogDescription>Keep it small and consistent.</DialogDescription>
+          <DialogTitle>{isEdit ? "Edit habit" : "Create habit"}</DialogTitle>
+          <DialogDescription>{isEdit ? "Tweak your habit details." : "Keep it small and consistent."}</DialogDescription>
         </DialogHeader>
 
         <form className="space-y-4" onSubmit={form.handleSubmit(onSubmit)}>
@@ -109,7 +141,7 @@ export default function HabitFormDialog({ onCreated }) {
           </div>
 
           <Button type="submit" className="w-full" disabled={form.formState.isSubmitting}>
-            {form.formState.isSubmitting ? "Creating…" : "Create"}
+            {form.formState.isSubmitting ? (isEdit ? "Saving…" : "Creating…") : isEdit ? "Save" : "Create"}
           </Button>
         </form>
       </DialogContent>

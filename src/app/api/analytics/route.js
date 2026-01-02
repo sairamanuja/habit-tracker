@@ -5,6 +5,11 @@ import { getServerAuthSession } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { rateLimit } from "@/lib/rateLimit";
 
+// Cache headers for better performance
+const CACHE_HEADERS = {
+  "Cache-Control": "private, max-age=30, stale-while-revalidate=60",
+};
+
 function classify(rate) {
   if (rate >= 0.8) return "STRONG";
   if (rate >= 0.6) return "WEAK";
@@ -23,23 +28,25 @@ export async function GET(request) {
   const from = startOfDay(subDays(new Date(), Math.max(1, Math.min(days, 365)) - 1));
   const to = endOfDay(new Date());
 
-  const habits = await prisma.habit.findMany({
-    where: { userId: session.user.id },
-    select: { id: true, title: true, frequency: true },
-  });
-
-  const entries = await prisma.habitEntry.findMany({
-    where: {
-      habit: { userId: session.user.id },
-      date: { gte: from, lte: to },
-    },
-    select: { habitId: true, date: true, status: true },
-  });
-
-  const streaks = await prisma.streak.findMany({
-    where: { habit: { userId: session.user.id } },
-    select: { habitId: true, currentStreak: true, longestStreak: true },
-  });
+  // Parallel fetch all data at once for speed
+  const [habits, entries, streaks] = await Promise.all([
+    prisma.habit.findMany({
+      where: { userId: session.user.id },
+      select: { id: true, title: true, frequency: true },
+    }),
+    prisma.habitEntry.findMany({
+      where: {
+        habit: { userId: session.user.id },
+        date: { gte: from, lte: to },
+      },
+      select: { habitId: true, date: true, status: true },
+    }),
+    prisma.streak.findMany({
+      where: { habit: { userId: session.user.id } },
+      select: { habitId: true, currentStreak: true, longestStreak: true },
+    }),
+  ]);
+  
   const streakMap = new Map(streaks.map((s) => [s.habitId, s]));
 
   // Daily completion rate across all habits.

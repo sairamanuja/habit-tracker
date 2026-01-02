@@ -12,6 +12,9 @@ export async function PATCH(request, { params }) {
   const session = await getServerAuthSession();
   if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
+  const { id } = await params;
+  if (!id) return NextResponse.json({ error: "Missing habit id" }, { status: 400 });
+
   const json = await request.json().catch(() => null);
   const parsed = updateHabitSchema.safeParse(json);
   if (!parsed.success) {
@@ -19,13 +22,13 @@ export async function PATCH(request, { params }) {
   }
 
   const habit = await prisma.habit.findFirst({
-    where: { id: params.id, userId: session.user.id },
+    where: { id, userId: session.user.id },
     select: { id: true },
   });
   if (!habit) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   const updated = await prisma.habit.update({
-    where: { id: params.id },
+    where: { id },
     data: {
       title: parsed.data.title,
       description: parsed.data.description,
@@ -41,15 +44,18 @@ export async function DELETE(request, { params }) {
   const rl = rateLimit(request, { keyPrefix: "habits:delete", limit: 30, windowMs: 60_000 });
   if (!rl.ok) return NextResponse.json({ error: "Rate limited" }, { status: 429 });
 
+  const { id } = await params;
+  if (!id) return NextResponse.json({ error: "Missing habit id" }, { status: 400 });
+
   const session = await getServerAuthSession();
   if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const habit = await prisma.habit.findFirst({
-    where: { id: params.id, userId: session.user.id },
+    where: { id, userId: session.user.id },
     select: { id: true },
   });
   if (!habit) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  await prisma.habit.delete({ where: { id: params.id } });
+  await prisma.habit.delete({ where: { id } });
   return NextResponse.json({ ok: true });
 }

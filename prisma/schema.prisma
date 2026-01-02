@@ -94,6 +94,8 @@ model HabitEntry {
 
   @@unique([habitId, date])
   @@index([habitId, date])
+  @@index([date])
+  @@index([habitId, status])
 }
 
 model Streak {

@@ -6,6 +6,11 @@ import { rateLimit } from "@/lib/rateLimit";
 import { createHabitSchema } from "@/lib/validators";
 import { isBeforeToday, parseYmdToDate, todayYmd } from "@/lib/date";
 
+// Cache headers for better performance
+const CACHE_HEADERS = {
+  "Cache-Control": "private, max-age=10, stale-while-revalidate=30",
+};
+
 export async function GET(request) {
   const rl = rateLimit(request, { keyPrefix: "habits:get", limit: 120, windowMs: 60_000 });
   if (!rl.ok) return NextResponse.json({ error: "Rate limited" }, { status: 429 });
@@ -23,6 +28,9 @@ export async function GET(request) {
       entries: {
         where: { date: parseYmdToDate(date) },
         select: { status: true },
+      },
+      streak: {
+        select: { currentStreak: true, longestStreak: true },
       },
     },
   });
@@ -49,6 +57,9 @@ export async function GET(request) {
             where: { date: parseYmdToDate(date) },
             select: { status: true },
           },
+          streak: {
+            select: { currentStreak: true, longestStreak: true },
+          },
         },
       });
 
@@ -62,6 +73,8 @@ export async function GET(request) {
           color: h.color,
           createdAt: h.createdAt,
           status: h.entries[0]?.status || null,
+          currentStreak: h.streak?.currentStreak || 0,
+          longestStreak: h.streak?.longestStreak || 0,
         })),
       });
     }
@@ -77,6 +90,8 @@ export async function GET(request) {
       color: h.color,
       createdAt: h.createdAt,
       status: h.entries[0]?.status || null,
+      currentStreak: h.streak?.currentStreak || 0,
+      longestStreak: h.streak?.longestStreak || 0,
     })),
   });
 }
